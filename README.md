@@ -1,4 +1,5 @@
 # RabbitMQ for Node.js
+This is a simple guide to create a RabbitMQ consumer/producer in MacOS using Node.js. This covers installation and execution of RabbitMQ service.
 
 ## 1. Install RabbitMQ
 - https://www.rabbitmq.com/install-homebrew.html
@@ -34,4 +35,9 @@ brew link rabbitmq
 ## 5. Run `receive.js`
 ```
 ./receive.js
+```
+
+## 6. Listing Queues
+```
+/usr/local/sbin/rabbitmqctl list_queues
 ```
