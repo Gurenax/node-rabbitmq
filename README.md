@@ -1,6 +1,27 @@
-# RabbitMQ for Node.js
+# RabbitMQ for Node.js in less than 20 steps
 This is a simple guide to create a RabbitMQ consumer/producer in MacOS using Node.js. The steps on this guide may also be applied to other operating systems but be aware that installation and running of RabbitMQ binaries and services could be different. In a nutshell, this guide covers installation, execution and basic configuration of the RabbitMQ service in Node.js.
 
+## Contents
+### Getting Started
+1. Install RabbitMQ
+2. Mac OS Brew install issues
+3. Start RabbitMQ Service
+4. Create and run `send.js`
+5. Create and run `receive.js`
+6. Listing Queues
+### Creating a Round-robin Dispatcher with RabbitMQ
+1. Create `new_task.js`
+2. Create `worker.js`
+3. Running `worker.js`
+4. Running `new_task.js`
+5. Tasks running in sequence
+6. Message acknowledgements
+7. Message durability
+8. Check unacknowledged messages
+9. Fair dispatch
+10. Summary
+
+# Getting Started
 ## 1. Install RabbitMQ
 - https://www.rabbitmq.com/install-homebrew.html
 
@@ -206,7 +227,7 @@ ch.assertQueue(q, { durable: true }) // { durable: true } ensures that the messa
 ch.ack(msg)
 ```
 
-## 8. Checked unacknowledged messages. To test this, comment out `ch.ack(msg)`. Messages will not be acknowledge with this commented.
+## 8. Check unacknowledged messages. To test this, comment out `ch.ack(msg)`. Messages will not be acknowledge with this commented.
 ```
 /usr/local/sbin/rabbitmqctl list_queues name messages_ready messages_unacknowledged
 ```
