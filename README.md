@@ -1,5 +1,5 @@
 # RabbitMQ for Node.js
-This is a simple guide to create a RabbitMQ consumer/producer in MacOS using Node.js. This covers installation and execution of RabbitMQ service.
+This is a simple guide to create a RabbitMQ consumer/producer in MacOS using Node.js. The steps on this guide may also be applied to other operating systems but be aware that installation and running of RabbitMQ binaries and services could be different. In a nutshell, this guide covers installation, execution and basic configuration of the RabbitMQ service in Node.js.
 
 ## 1. Install RabbitMQ
 - https://www.rabbitmq.com/install-homebrew.html
@@ -8,15 +8,14 @@ This is a simple guide to create a RabbitMQ consumer/producer in MacOS using Nod
 
 ## 2. Mac OS Brew install issues
 
-### Problem
+### Issue
 ```
 Error: The `brew link` step did not complete successfully
 The formula built, but is not symlinked into /usr/local
 Could not symlink sbin/cuttlefish
 /usr/local/sbin is not writable.
 ```
-
-### Solution
+### Fix
 ```
 cd /usr/local
 sudo mkdir sbin
