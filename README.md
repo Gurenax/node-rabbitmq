@@ -1,5 +1,5 @@
 # RabbitMQ for Node.js in less than 20 steps
-This is a simple guide to create a RabbitMQ consumer/producer in MacOS using Node.js. The steps on this guide may also be applied to other operating systems but be aware that installation and running of RabbitMQ binaries and services could be different. In a nutshell, this guide covers installation, execution and basic configuration of the RabbitMQ service in Node.js.
+This is a simple guide to create a RabbitMQ consumer/producer in MacOS using Node.js based on [RabbitMQ Tutorials](https://www.rabbitmq.com/tutorials/tutorial-one-javascript.html). The steps on this guide may also be applied to other operating systems but be aware that installation and running of RabbitMQ binaries and services could be different. In a nutshell, this guide covers installation, execution and basic configuration of the RabbitMQ service in Node.js.
 
 ## Contents
 ### Getting Started
