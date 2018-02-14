@@ -26,13 +26,65 @@ brew link rabbitmq
 ## 3. Start RabbitMQ Service
 - `brew services start rabbitmq`
 
-## 4. Run `send.js`
+## 4. Create and run `send.js`
+```javascript
+#!/usr/bin/env node
+const amqp = require('amqplib/callback_api')
+
+// Create connection
+amqp.connect('amqp://localhost', (err, conn) => {
+  // Create channel
+  conn.createChannel((err, ch) => {
+    // Name of the queue
+    const q = 'hello'
+    // Declare the queue
+    ch.assertQueue(q, { durable: false })
+
+    // Send message to the queue
+    ch.sendToQueue(q, new Buffer('Hello World!'))
+    console.log(" {x} Sent 'Hello World'")
+
+    // Close the connection and exit
+    setTimeout(() => {
+      conn.close()
+      process.exit(0)
+    }, 500)
+  })
+})
 ```
+```
+# Terminal
+sudo chmod 755 send.js
 ./send.js
 ```
 
-## 5. Run `receive.js`
+## 5. Create and run `receive.js`
+```javascript
+#!/usr/bin/env node
+const amqp = require('amqplib/callback_api')
+
+// Create connection
+amqp.connect('amqp://localhost', (err, conn) => {
+  // Create channel
+  conn.createChannel((err, ch) => {
+    // Name of the queue
+    const q = 'hello'
+    // Declare the queue
+    ch.assertQueue(q, { durable: false })
+
+    // Wait for Queue Messages
+    console.log(` [*] Waiting for messages in ${q}. To exit press CTRL+C`)
+    ch.consume( q, msg => {
+        console.log(` [x] Received ${msg.content.toString()}`)
+      }, { noAck: true }
+    )
+  })
+})
 ```
+
+```
+# Terminal
+sudo chmod 755 receive.js
 ./receive.js
 ```
 
@@ -44,10 +96,78 @@ brew link rabbitmq
 # Creating a Round-robin Dispatcher with RabbitMQ
 
 ## 1. Create `new_task.js`
+```javascript
+#!/usr/bin/env node
+const amqp = require('amqplib/callback_api')
+
+// Create connection
+amqp.connect('amqp://localhost', (err, conn) => {
+  // Create channel
+  conn.createChannel((err, ch) => {
+    // Name of the queue
+    const q = 'task_queue_durable'
+    // Write a message
+    const msg = process.argv.slice(2).join(' ') || "Hello World!"
+
+    // Declare the queue
+    ch.assertQueue(q, { durable: true }) // { durable: true } ensures that the message will still be redelivered even if RabbitMQ service is turned off/restarted
+
+    // Send message to the queue
+    ch.sendToQueue(q, new Buffer(msg), {persistent: true}) // {persistent: true} saves the message to disk/cache
+    console.log(` {x} Sent '${msg}'`)
+
+    // Close the connection and exit
+    setTimeout(() => {
+      conn.close()
+      process.exit(0)
+    }, 500)
+  })
+})
+```
 ## 2. Create `worker.js`
+```javascript
+#!/usr/bin/env node
+const amqp = require('amqplib/callback_api')
+
+// Create connection
+amqp.connect('amqp://localhost', (err, conn) => {
+  // Create channel
+  conn.createChannel((err, ch) => {
+    // Name of the queue
+    const q = 'task_queue_durable'
+    // Declare the queue
+    ch.assertQueue(q, { durable: true }) // { durable: true } ensures that the message will still be redelivered even if RabbitMQ service is turned off/restarted
+    // Tell RabbitMQ not to give more than 1 message per worker
+    ch.prefetch(1)
+
+    // Wait for Queue Messages
+    console.log(` [*] Waiting for messages in ${q}. To exit press CTRL+C`)
+    ch.consume( q, msg => {
+        // Just to simulate a fake task, length of dots in the message
+        // is the number of secs the task will run
+        const secs = msg.content.toString().split('.').length - 1
+
+        console.log(` [x] Received ${msg.content.toString()}`)
+        console.log(` [x] Task will run for ${secs} secs`)
+        
+        // Fake task which simulates execution time
+        setTimeout(() => {
+          console.log(` [x] Done ${msg.content.toString()}`);
+          // Send acknowledgment
+          ch.ack(msg)
+        }, secs * 1000)
+
+      }, { noAck: false } // noAck: false means Message acknowledgments is turned on
+      // When message acknowledgements are turned on, even if a worker.js is killed (Ctrl+C)
+      // while processing a message, it will be redelivered
+    )
+  })
+})
+```
 ## 3. Open two terminals and run worker.js on each
 ```
 # terminal 1
+sudo chmod 755 worker.js
 ./worker.js
 # => [*] Waiting for messages. To exit press CTRL+C
 ```
@@ -59,6 +179,7 @@ brew link rabbitmq
 
 ## 4. Open a third terminal and run several new_task.js
 ```
+sudo chmod 755 new_task.js
 ./new_task.js First message.
 ./new_task.js Second message..
 ./new_task.js Third message...
