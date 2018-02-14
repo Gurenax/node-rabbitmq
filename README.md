@@ -7,6 +7,7 @@ This is a simple guide to create a RabbitMQ consumer/producer in MacOS using Nod
 - `brew install rabbitmq`
 
 ## 2. Mac OS Brew install issues
+- As of writing, I expect that you will also have this issue:
 
 ### Issue
 ```
