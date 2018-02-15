@@ -1,4 +1,4 @@
-# RabbitMQ for Node.js in less than 25 steps
+# RabbitMQ for Node.js in 25 steps
 This is a simple guide to RabbitMQ patterns in MacOS using Node.js based on [RabbitMQ Tutorials](https://www.rabbitmq.com/tutorials/tutorial-one-javascript.html). The steps on this guide may also be applied to other operating systems but be aware that installation and running of RabbitMQ binaries and services could be different. In a nutshell, this guide covers installation, execution and basic configuration of the RabbitMQ service in Node.js.
 
 ## Contents
@@ -30,6 +30,8 @@ This is a simple guide to RabbitMQ patterns in MacOS using Node.js based on [Rab
 5. [Messages published to subscribers](#22)
 6. [Check bindings](#23)
 7. [Check types of exchanges](#24)
+9. [Summary](#25)
+
 
 # Getting Started
 ## <a id="1"></a>1. Install RabbitMQ
@@ -227,14 +229,16 @@ sudo chmod 755 new_task.js
 
 ## <a id="11"></a>5. The tasks will run in sequence for each worker.js currently running.
 
-## <a id="12"></a>6. Message acknowledgements in `worker.js`. This step was already done so there is nothing else to change anything in worker.js.
+## <a id="12"></a>6. Message acknowledgements in `worker.js`.
+This step was already done so there is nothing else to change anything in worker.js.
 ```javascript
 { noAck: false } // noAck: false means Message acknowledgments is turned on
 // When message acknowledgements are turned on, even if a worker.js is killed (Ctrl+C)
 // while processing a message, it will be redelivered
 ```
 
-## <a id="13"></a>7. Message durability in both `worker.js` and `new_task.js`. This step was already done so there is nothing else to change anything in worker.js.
+## <a id="13"></a>7. Message durability in both `worker.js` and `new_task.js`.
+This step was already done so there is nothing else to change anything in worker.js.
 ```javascript
 ch.assertQueue(q, { durable: true }) // { durable: true } ensures that the message will still be redelivered even if RabbitMQ service is turned off/restarted
 ```
@@ -243,12 +247,14 @@ ch.assertQueue(q, { durable: true }) // { durable: true } ensures that the messa
 ch.ack(msg)
 ```
 
-## <a id="14"></a>8. Check unacknowledged messages. To test this, comment out `ch.ack(msg)`. Messages will not be acknowledge with this commented.
+## <a id="14"></a>8. Check unacknowledged messages.
+To test this, comment out `ch.ack(msg)`. Messages will not be acknowledge with this commented.
 ```
 /usr/local/sbin/rabbitmqctl list_queues name messages_ready messages_unacknowledged
 ```
 
-## <a id="15"></a>9. Message persistence in `new_task.js`. As requirement to #7, persistence needs to be set to true.
+## <a id="15"></a>9. Message persistence in `new_task.js`.
+As requirement to #7, persistence needs to be set to true.
 ```javascript
 ch.sendToQueue(q, new Buffer(msg), {persistent: true}) // {persistent: true} saves the message to disk/cache
 ```
@@ -392,7 +398,12 @@ sudo chmod 755 emit_logs.js
 /usr/local/sbin/rabbitmqctl list_bindings
 ```
 
-## <a id="24"></a>7. Aside from `fanout`, there are many other types of exchanges. Check them by typing the following in your terminal:
+## <a id="24"></a>7. Aside from `fanout`, there are many other types of exchanges.
+Check them by typing the following in your terminal:
 ```
 /usr/local/sbin/rabbitmqctl list_exchanges
 ```
+
+## <a id="25"></a>8. In summary:
+1. We created subscribers that creates queues with randomly generated names and bind those to an exchange.
+2. We created a publisher that sends messages to an exchange and consumes the message to all queues bound to that exchange.
