@@ -2,7 +2,7 @@
 This is a simple guide to RabbitMQ patterns in MacOS using Node.js based on [RabbitMQ Tutorials](https://www.rabbitmq.com/tutorials/tutorial-one-javascript.html). The steps on this guide may also be applied to other operating systems but be aware that installation and running of RabbitMQ binaries and services could be different. In a nutshell, this guide covers installation, execution and basic configuration of the RabbitMQ service in Node.js.
 
 ## Contents
-### Getting Started with Basic Consumer/Producer Pattern
+### Getting Started
 1. [Install RabbitMQ](#1)
 2. [Mac OS Brew install issues](#2)
 3. [Start RabbitMQ Service](#3)
