@@ -1,4 +1,4 @@
-# RabbitMQ for Node.js in less than 20 steps
+# RabbitMQ for Node.js in less than 25 steps
 This is a simple guide to create a RabbitMQ consumer/producer in MacOS using Node.js based on [RabbitMQ Tutorials](https://www.rabbitmq.com/tutorials/tutorial-one-javascript.html). The steps on this guide may also be applied to other operating systems but be aware that installation and running of RabbitMQ binaries and services could be different. In a nutshell, this guide covers installation, execution and basic configuration of the RabbitMQ service in Node.js.
 
 ## Contents
@@ -9,7 +9,7 @@ This is a simple guide to create a RabbitMQ consumer/producer in MacOS using Nod
 4. [Create and run `send.js`](#4)
 5. [Create and run `receive.js`](#5)
 6. [Listing Queues](#6)
-### Creating a Round-robin Dispatcher with RabbitMQ
+### Work Queue Pattern (Round-robin Dispatcher)
 1. [Create `new_task.js`](#7)
 2. [Create `worker.js`](#8)
 3. [Running `worker.js`](#9)
@@ -21,6 +21,14 @@ This is a simple guide to create a RabbitMQ consumer/producer in MacOS using Nod
 9. [Message persisence](#15)
 10. [Fair dispatch](#16)
 11. [Summary](#17)
+### Publish and Subscribe Pattern
+1. [Create `emit_log.js`](#18)
+2. [Create `receive_logs.js`](#19)
+3. [Running`receive_logs.js`](#20)
+4. [Running `emit_logs.js`](#21)
+5. [Messages published to subscribers](#22)
+6. [Check bindings](#23)
+7. [Check types of exchanges](#24)
 
 # Getting Started
 ## <a id="1"></a>1. Install RabbitMQ
@@ -116,7 +124,7 @@ sudo chmod 755 receive.js
 /usr/local/sbin/rabbitmqctl list_queues
 ```
 
-# Creating a Round-robin Dispatcher with RabbitMQ
+# Work Queue Pattern (Round-robin Dispatcher)
 
 ## <a id="7"></a>1. Create `new_task.js`
 ```javascript
@@ -249,3 +257,133 @@ ch.prefetch(1)
 - Message acknowledgement is turned on which means that if a worker dies, the message will be redelivered if not already acknowledged.
 - Message persistence is turned on which means that if the RabbitMQ is killed or restarted, the message will still be written on disk or cache.
 - Fair dispatch is enabled which means, the consumer will not process more than X messages per worker at the risk of filling up a queue.
+
+
+# Publish and Subscribe Pattern
+## <a id="18"></a>1. Create `emit_log.js`
+```javascript
+#!/usr/bin/env node
+const amqp = require('amqplib/callback_api')
+
+// Create connection
+amqp.connect('amqp://localhost', (err, conn) => {
+  // Create channel
+  conn.createChannel((err, ch) => {
+    // Name of the exchange
+    const ex = 'logs'
+    // Write a message
+    const msg = process.argv.slice(2).join(' ') || "Hello World!"
+
+    // Declare the exchange
+    ch.assertExchange(ex, 'fanout', { durable: false }) // 'fanout' will broadcast all messages to all the queues it knows
+
+    // Send message to the exchange
+    ch.publish(ex, '', new Buffer(msg))  // '' empty string means that message will not be sent to a specific queue
+    console.log(` {x} Sent '${msg}'`)
+
+    // Close the connection and exit
+    setTimeout(() => {
+      conn.close()
+      process.exit(0)
+    }, 500)
+  })
+})
+```
+### Major differences from previous pattern `new_task.js`
+1. We are not declaring an exchange instead of a queue
+```javascript
+// Name of the exchange
+const ex = 'logs'
+```
+```javascript
+// Declare the exchange
+ch.assertExchange(ex, 'fanout', { durable: false }) // 'fanout' will broadcast all messages to all the queues it knows
+```
+2. We now publish messages instead of sending a message directly to a queue
+```javascript
+// Send message to the exchange
+ch.publish(ex, '', new Buffer(msg))  // '' empty string means that message will not be sent to a specific queue
+```
+
+## <a id="19"></a>2. Create `receive_logs.js`
+```javascript
+#!/usr/bin/env node
+const amqp = require('amqplib/callback_api')
+
+// Create connection
+amqp.connect('amqp://localhost', (err, conn) => {
+  // Create channel
+  conn.createChannel((err, ch) => {
+    // Name of the exchange
+    const ex = 'logs'
+    // Declare the exchange
+    ch.assertExchange(ex, 'fanout', { durable: false }) // 'fanout' will broadcast all messages to all the queues it knows
+
+    // Declare the queues
+    ch.assertQueue('', {exclusive: true}, (err, q) => {
+      // Wait for Queue Messages
+      console.log(` [*] Waiting for messages in ${q}. To exit press CTRL+C`)
+      // Tell exchange to send messages to queue
+      ch.bindQueue(q.queue, ex, '')
+      // Consume queue messages
+      ch.consume(q.queue, msg => {
+        console.log(` [x] ${msg.content.toString()}`)
+      }, {noAck: true})
+    })
+  })
+})
+```
+### Major differences from previous pattern `worker.js`
+1. We are not declaring an exchange instead of a queue
+```javascript
+// Name of the exchange
+const ex = 'logs'
+```
+```javascript
+// Declare the exchange
+ch.assertExchange(ex, 'fanout', { durable: false }) // 'fanout' will broadcast all messages to all the queues it knows
+```
+2. We create a non-durable queue with a generated queue name by specifying an empty string.
+```javascript
+ch.assertQueue('', {exclusive: true}, (err, q) => {
+```
+3. We bind the exchange to the queue
+```javascript
+// Tell exchange to send messages to queue
+ch.bindQueue(q.queue, ex, '')
+```
+4. The consumer consumes messages to every queue in the exchange (i.e. Sent to all running queues)
+```javascript
+// Consume queue messages
+ch.consume(q.queue, msg => {
+  console.log(` [x] ${msg.content.toString()}`)
+}, {noAck: true})
+```
+
+## <a id="20"></a>3. Open two terminals and run `receive_logs.js` for each.
+```
+#Terminal 1
+sudo chmod 755 receive_logs.js
+./receive_logs.js
+```
+```
+#Terminal 2
+./receive_logs.js
+```
+## <a id="21"></a>4. Open a third terminal and run `emit_logs.js`.
+```
+#Terminal 3
+sudo chmod 755 emit_logs.js
+./emit_logs.js
+```
+## <a id="22"></a>5. The message sent by `emit_logs.js` will be sent to all running `receive_logs.js`.
+
+## <a id="23"></a>6. To check all bindings (i.e. Exchanges bound to queues):
+```
+/usr/local/sbin/rabbitmqctl list_bindings
+```
+
+## <a id="24"></a>7. Aside from `fanout`, there are many other types of exchanges. Check them by typing the following in your terminal:
+```
+/usr/local/sbin/rabbitmqctl list_exchanges
+```
