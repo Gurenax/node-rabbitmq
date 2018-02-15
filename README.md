@@ -58,7 +58,7 @@ brew link rabbitmq
 ## <a id="3"></a>3. Start RabbitMQ Service
 - `brew services start rabbitmq`
 
-### Consumer and Producer Pattern
+# Consumer and Producer Pattern
 ## <a id="4"></a>1. Create and run `send.js`
 This will send messages to a queue.
 ```javascript
