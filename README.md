@@ -1,14 +1,15 @@
 # RabbitMQ for Node.js in less than 25 steps
-This is a simple guide to create a RabbitMQ consumer/producer in MacOS using Node.js based on [RabbitMQ Tutorials](https://www.rabbitmq.com/tutorials/tutorial-one-javascript.html). The steps on this guide may also be applied to other operating systems but be aware that installation and running of RabbitMQ binaries and services could be different. In a nutshell, this guide covers installation, execution and basic configuration of the RabbitMQ service in Node.js.
+This is a simple guide to RabbitMQ patterns in MacOS using Node.js based on [RabbitMQ Tutorials](https://www.rabbitmq.com/tutorials/tutorial-one-javascript.html). The steps on this guide may also be applied to other operating systems but be aware that installation and running of RabbitMQ binaries and services could be different. In a nutshell, this guide covers installation, execution and basic configuration of the RabbitMQ service in Node.js.
 
 ## Contents
-### Getting Started
+### Getting Started with Basic Consumer/Producer Pattern
 1. [Install RabbitMQ](#1)
 2. [Mac OS Brew install issues](#2)
 3. [Start RabbitMQ Service](#3)
-4. [Create and run `send.js`](#4)
-5. [Create and run `receive.js`](#5)
-6. [Listing Queues](#6)
+### Consumer and Producer Pattern
+1. [Create and run `send.js`](#4)
+2. [Create and run `receive.js`](#5)
+3. [Listing Queues](#6)
 ### Work Queue Pattern (Round-robin Dispatcher)
 1. [Create `new_task.js`](#7)
 2. [Create `worker.js`](#8)
@@ -57,7 +58,9 @@ brew link rabbitmq
 ## <a id="3"></a>3. Start RabbitMQ Service
 - `brew services start rabbitmq`
 
-## <a id="4"></a>4. Create and run `send.js`
+### Consumer and Producer Pattern
+## <a id="4"></a>1. Create and run `send.js`
+This will send messages to a queue.
 ```javascript
 #!/usr/bin/env node
 const amqp = require('amqplib/callback_api')
@@ -89,7 +92,8 @@ sudo chmod 755 send.js
 ./send.js
 ```
 
-## <a id="5"></a>5. Create and run `receive.js`
+## <a id="5"></a>2. Create and run `receive.js`
+This will receive messages from a queue.
 ```javascript
 #!/usr/bin/env node
 const amqp = require('amqplib/callback_api')
@@ -119,7 +123,8 @@ sudo chmod 755 receive.js
 ./receive.js
 ```
 
-## <a id="6"></a>6. Listing Queues
+## <a id="6"></a>3. Listing Queues
+This will list all queues present in the RabbitMQ service
 ```
 /usr/local/sbin/rabbitmqctl list_queues
 ```
@@ -127,6 +132,7 @@ sudo chmod 755 receive.js
 # Work Queue Pattern (Round-robin Dispatcher)
 
 ## <a id="7"></a>1. Create `new_task.js`
+This will send a message to the next available queue.
 ```javascript
 #!/usr/bin/env node
 const amqp = require('amqplib/callback_api')
@@ -156,6 +162,7 @@ amqp.connect('amqp://localhost', (err, conn) => {
 })
 ```
 ## <a id="8"></a>2. Create `worker.js`
+This will consume messages when it's the next worker in the round-robin dispatch.
 ```javascript
 #!/usr/bin/env node
 const amqp = require('amqplib/callback_api')
@@ -261,6 +268,7 @@ ch.prefetch(1)
 
 # Publish and Subscribe Pattern
 ## <a id="18"></a>1. Create `emit_log.js`
+This will publish messages to an exchange and deliver the messages to all queues bound to that exchange.
 ```javascript
 #!/usr/bin/env node
 const amqp = require('amqplib/callback_api')
@@ -306,6 +314,7 @@ ch.publish(ex, '', new Buffer(msg))  // '' empty string means that message will 
 ```
 
 ## <a id="19"></a>2. Create `receive_logs.js`
+Every instance of this will subscribe to an exchange and receive messages from the queue.
 ```javascript
 #!/usr/bin/env node
 const amqp = require('amqplib/callback_api')
