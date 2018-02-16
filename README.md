@@ -304,7 +304,7 @@ amqp.connect('amqp://localhost', (err, conn) => {
 })
 ```
 ### Major differences from previous pattern `new_task.js`
-1. We are not declaring an exchange instead of a queue
+1. We are now declaring an exchange instead of a queue
 ```javascript
 // Name of the exchange
 const ex = 'logs'
@@ -349,7 +349,7 @@ amqp.connect('amqp://localhost', (err, conn) => {
 })
 ```
 ### Major differences from previous pattern `worker.js`
-1. We are not declaring an exchange instead of a queue
+1. We are now declaring an exchange instead of a queue
 ```javascript
 // Name of the exchange
 const ex = 'logs'
