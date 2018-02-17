@@ -1,4 +1,4 @@
-# RabbitMQ for Node.js in 25 steps
+# RabbitMQ for Node.js in 30 steps
 This is a simple guide to RabbitMQ patterns in MacOS using Node.js based on [RabbitMQ Tutorials](https://www.rabbitmq.com/tutorials/tutorial-one-javascript.html). The steps on this guide may also be applied to other operating systems but be aware that installation and running of RabbitMQ binaries and services could be different. In a nutshell, this guide covers installation, execution and basic configuration of the RabbitMQ service in Node.js.
 
 ## Contents
@@ -22,16 +22,21 @@ This is a simple guide to RabbitMQ patterns in MacOS using Node.js based on [Rab
 9. [Message persisence](#15)
 10. [Fair dispatch](#16)
 11. [Summary](#17)
-### Publish and Subscribe Pattern
+### Publish and Subscribe Pattern - Fanout
 1. [Create `emit_log.js`](#18)
 2. [Create `receive_logs.js`](#19)
 3. [Running`receive_logs.js`](#20)
-4. [Running `emit_logs.js`](#21)
+4. [Running `emit_log.js`](#21)
 5. [Messages published to subscribers](#22)
 6. [Check bindings](#23)
 7. [Check types of exchanges](#24)
 9. [Summary](#25)
-
+### Publish and Subscribe Pattern - Direct
+1. [Create `emit_log_direct.js`](#26)
+2. [Create `receive_logs_direct.js`](#27)
+3. [Running`receive_logs_direct.js`](#28)
+4. [Running `emit_log_direct.js`](#29)
+5. [Summary](#30)
 
 # Getting Started
 ## <a id="1"></a>1. Install RabbitMQ
@@ -272,7 +277,7 @@ ch.prefetch(1)
 - Fair dispatch is enabled which means, the consumer will not process more than X messages per worker at the risk of filling up a queue.
 
 
-# Publish and Subscribe Pattern
+# Publish and Subscribe Pattern - Fanout
 ## <a id="18"></a>1. Create `emit_log.js`
 This will publish messages to an exchange and deliver the messages to all queues bound to that exchange.
 ```javascript
@@ -385,13 +390,13 @@ sudo chmod 755 receive_logs.js
 #Terminal 2
 ./receive_logs.js
 ```
-## <a id="21"></a>4. Open a third terminal and run `emit_logs.js`.
+## <a id="21"></a>4. Open a third terminal and run `emit_log.js`.
 ```
 #Terminal 3
-sudo chmod 755 emit_logs.js
-./emit_logs.js
+sudo chmod 755 emit_log.js
+./emit_log.js
 ```
-## <a id="22"></a>5. The message sent by `emit_logs.js` will be sent to all running `receive_logs.js`.
+## <a id="22"></a>5. The message sent by `emit_log.js` will be sent to all running `receive_logs.js`.
 
 ## <a id="23"></a>6. To check all bindings (i.e. Exchanges bound to queues):
 ```
@@ -407,3 +412,154 @@ Check them by typing the following in your terminal:
 ## <a id="25"></a>8. In summary:
 1. We created subscribers that creates queues with randomly generated names and bind those to an exchange.
 2. We created a publisher that sends messages to an exchange and consumes the message to all queues bound to that exchange.
+
+# Publish and Subscribe Pattern - Direct
+## <a id="26"></a>1. Create `emit_log_direct.js`
+```javascript
+#!/usr/bin/env node
+const amqp = require('amqplib/callback_api')
+
+// Create connection
+amqp.connect('amqp://localhost', (err, conn) => {
+  // Create channel
+  conn.createChannel((err, ch) => {
+    // Name of the exchange
+    const ex = 'direct_logs'
+    // Store message as args
+    const args = process.argv.slice(2)
+    // Write a message
+    const msg = args.slice(1).join(' ') || "Hello World!"
+    // Use severity as the binding key
+    const severity = (args.length > 0) ? args[0] : 'info'
+
+    // Declare the exchange
+    ch.assertExchange(ex, 'direct', { durable: false }) // 'direct' will broadcast messages to its corresponding binding key (i.e. severity)
+
+    // Send message to the exchange
+    ch.publish(ex, severity, new Buffer(msg))  // '' empty string means that message will not be sent to a specific queue
+    console.log(` {x} Sent ${severity}: '${msg}'`)
+
+    // Close the connection and exit
+    setTimeout(() => {
+      conn.close()
+      process.exit(0)
+    }, 500)
+  })
+})
+```
+### Major differences from previous pattern `emit_log.js`
+1. We identify a binding key as part of the run arguments. For this example, we are using `severity` which can either have a value of `info`, `warning`, or `error`.
+```javascript
+// Store message as args
+const args = process.argv.slice(2)
+// Write a message
+const msg = args.slice(1).join(' ') || "Hello World!"
+// Use severity as the binding key
+const severity = (args.length > 0) ? args[0] : 'info'
+```
+2. The exchange is now declared as `direct`.
+```javascript
+// Declare the exchange
+ch.assertExchange(ex, 'direct', { durable: false }) // 'direct' will broadcast messages to its corresponding binding key (i.e. severity)
+```
+3. Publishing the message now uses a binding key `severity`.
+```javascript
+// Send message to the exchange
+ch.publish(ex, severity, new Buffer(msg))  // '' empty string means that message will not be sent to a specific queue
+console.log(` {x} Sent ${severity}: '${msg}'`)
+```
+
+## <a id="27"></a>2. Create `receive_logs_direct.js`
+```javascript
+#!/usr/bin/env node
+const amqp = require('amqplib/callback_api')
+
+// Store message as args
+const args = process.argv.slice(2);
+
+// Choose what type of binding key `receive_logs_direct.js` is going to use
+// If no arguments were provided, output instructions
+if (args.length == 0) {
+  console.log("Usage: receive_logs_direct.js [info] [warning] [error]");
+  process.exit(1);
+}
+
+// Create connection
+amqp.connect('amqp://localhost', (err, conn) => {
+  // Create channel
+  conn.createChannel((err, ch) => {
+    // Name of the exchange
+    const ex = 'direct_logs'
+    // Declare the exchange
+    ch.assertExchange(ex, 'direct', { durable: false }) // 'direct' will broadcast messages to its corresponding binding key (i.e. severity)
+
+    // Declare the queues
+    ch.assertQueue('', {exclusive: true}, (err, q) => {
+      // Wait for Queue Messages
+      console.log(` [*] Waiting for messages in ${q}. To exit press CTRL+C`)
+      // For each binding key, tell exchange to send messages to queue
+      args.forEach( severity => {
+        ch.bindQueue(q.queue, ex, severity)
+      })
+      
+      // Consume queue messages
+      ch.consume(q.queue, msg => {
+        console.log(` [x] ${msg.fields.routingKey}: ${msg.content.toString()}`)
+      }, {noAck: true})
+    })
+  })
+})
+```
+### Major differences from previous pattern `receive_logs.js`
+1. We now require the user to specify a binding key as part of the run arguments. If no binding key is provided, an instruction will be outputted to the user.
+```javascript
+// If no arguments were provided, output instructions
+if (args.length == 0) {
+  console.log("Usage: receive_logs_direct.js [info] [warning] [error]");
+  process.exit(1);
+}
+```
+2. The exchange is now declared as `direct`.
+```javascript
+// Declare the exchange
+ch.assertExchange(ex, 'direct', { durable: false }) // 'direct' will broadcast messages to its corresponding binding key (i.e. severity)
+```
+3. The exchange is bound to queues by binding key
+```javascript
+// For each binding key, tell exchange to send messages to queue
+args.forEach( severity => {
+  ch.bindQueue(q.queue, ex, severity)
+})
+```
+4. The output message now outputs the routing key (equivalent value to binding key)
+```javascript
+// Consume queue messages
+ch.consume(q.queue, msg => {
+  console.log(` [x] ${msg.fields.routingKey}: ${msg.content.toString()}`)
+}, {noAck: true})
+```
+
+## <a id="28"></a>3. Open 2 terminals to run `receive_logs_direct.js` for each routing key:
+```
+# Terminal 1 - Will display info messages only
+chmod 755 receive_logs_direct.js
+./receive_logs_direct.js info
+```
+```
+# Terminal 2 - Will display warning and error messages
+./receive_logs_direct.js warning error
+```
+
+## <a id="29"></a>4. Open another terminal to run `emit_log_direct.js`
+```
+# Terminal 3
+chmod 755 emit_log_direct.js
+./emit_log_direct.js info This is an info message
+./emit_log_direct.js warning This is a warning message
+./emit_log_direct.js error This is an error message
+```
+
+## <a id="30"></a>5. In summary:
+1. We are now publishing and subscribing to messages using a `direct` exchange.
+2. A `direct` exchange uses a `binding key` (which has an equivalent value to a `routing key`)
+3. Receiving logs require that a binding key is specified before runtime. The queue will only receive messages from publishers with a similar binding keys which is also specified before runtime.
