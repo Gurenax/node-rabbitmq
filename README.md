@@ -561,5 +561,5 @@ chmod 755 emit_log_direct.js
 
 ## <a id="30"></a>5. In summary:
 1. We are now publishing and subscribing to messages using a `direct` exchange.
-2. A `direct` exchange uses a `binding key` (which has an equivalent value to a `routing key`)
+2. A `direct` exchange uses a `binding key` (which has an equivalent value to a `routing key`). This key will tell the subscribers to listen only to a specific queue (similar to a channel).
 3. Receiving logs require that a binding key is specified before runtime. The queue will only receive messages from publishers with a similar binding keys which is also specified before runtime.
